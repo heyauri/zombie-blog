@@ -55,6 +55,7 @@ class Weibo(object):
         self.got_count = 0  # 存储爬取到的微博数
         self.weibo = []  # 存储爬取到的所有微博信息
         self.weibo_id_list = []  # 存储爬取到的所有微博id
+        self.except_count = 0
 
     def validate_config(self, config):
         """验证配置是否正确"""
@@ -493,6 +494,8 @@ class Weibo(object):
         except Exception as e:
             print("Error: ", e)
             traceback.print_exc()
+            self.except_count += 1
+            sleep(600)
             return True
 
     def get_page_count(self):
@@ -616,7 +619,7 @@ class Weibo(object):
             # 制会自动解除)，加入随机等待模拟人的操作，可降低被系统限制的风险。默
             # 认是每爬取1到5页随机等待6到10秒，如果仍然被限，可适当增加sleep时间
             if page - page1 == random_pages and page < page_count:
-                sleep(random.randint(7, 12))
+                sleep(random.randint(11, 22))
                 page1 = page
                 random_pages = random.randint(1, 5)
 
@@ -646,10 +649,13 @@ class Weibo(object):
 
     def start(self):
         """运行爬虫"""
-        sensetive_words = ["警", "政务", "平安", "官微", "身边事","伊斯兰"]
+        sensetive_words = ["警", "政务", "平安", "官微", "身边事", "伊斯兰"]
         try:
             # for user_id in self.user_id_list:
             while (True):
+                if self.except_count > 3:
+                    sleep(1200)
+                    self.except_count = 0
                 user_id = self.user_id_list[random.randint(0, len(self.user_id_list) - 1)]
                 self.initialize_info(user_id)
                 self.get_user_info()
@@ -705,7 +711,7 @@ def main():
 
 if __name__ == '__main__':
     if os.path.exists(user_id_dict_path):
-        with open(user_id_dict_path) as csv_file:
+        with open(user_id_dict_path,encoding="utf8") as csv_file:
             reader = csv.reader(csv_file)
             user_id_dict = dict(reader)
     main()
