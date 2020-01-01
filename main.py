@@ -112,6 +112,10 @@ class Weibo(object):
     def get_weibo_json(self, page):
         """获取网页中微博json数据"""
         params = {'containerid': '107603' + str(self.user_id), 'page': page}
+        '''
+        if self.filter:
+            params["is_ori"] = 1
+        '''
         js = self.get_json(params)
         return js
 
@@ -586,7 +590,7 @@ class Weibo(object):
             if 'csv' in self.write_mode:
                 self.write_csv(wrote_count)
                 """record those user_id"""
-                with open(user_id_dict_path, 'w', newline="") as f:
+                with open(user_id_dict_path, 'w', newline="", encoding="utf8") as f:
                     writer = csv.writer(f)
                     for key, value in user_id_dict.items():
                         writer.writerow([key, value])
@@ -651,14 +655,15 @@ class Weibo(object):
         """运行爬虫"""
         sensetive_words = ["警", "政务", "平安", "官微", "身边事", "伊斯兰"]
         try:
-            # for user_id in self.user_id_list:
-            while (True):
+            for i in range(0, len(self.user_id_list)):
+                user_id = self.user_id_list[i]
                 if self.except_count > 3:
                     sleep(1200)
                     self.except_count = 0
-                user_id = self.user_id_list[random.randint(0, len(self.user_id_list) - 1)]
+                # user_id = self.user_id_list[random.randint(0, len(self.user_id_list) - 1)]
                 self.initialize_info(user_id)
                 self.get_user_info()
+                # self.print_user_info()
                 if self.user.get("verified_type"):
                     continue
                 nick_name = self.user.get("screen_name")
@@ -711,7 +716,7 @@ def main():
 
 if __name__ == '__main__':
     if os.path.exists(user_id_dict_path):
-        with open(user_id_dict_path,encoding="utf8") as csv_file:
+        with open(user_id_dict_path, encoding="utf8") as csv_file:
             reader = csv.reader(csv_file)
             user_id_dict = dict(reader)
     main()
