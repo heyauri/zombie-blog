@@ -19,7 +19,9 @@ from requests.adapters import HTTPAdapter
 from tqdm import tqdm
 
 user_id_dict_path = "user_id_dict.csv"
+user_id_filter_dict_path = "user_id_filter_dict.csv"
 user_id_dict = {}
+user_id_filter_dict = {}
 
 
 class Weibo(object):
@@ -443,7 +445,7 @@ class Weibo(object):
                     weibo['retweet'] = retweet
                 if retweet["user_id"] != '' and retweet["screen_name"] != '':
                     # print(retweet["user_id"], retweet["screen_name"])
-                    if retweet["user_id"] not in user_id_dict:
+                    if retweet["user_id"] not in user_id_filter_dict and retweet["user_id"] not in user_id_dict:
                         user_id_dict[retweet["user_id"]] = retweet["screen_name"]
             else:  # 原创
                 if is_long:
@@ -594,17 +596,17 @@ class Weibo(object):
                     writer = csv.writer(f)
                     for key, value in user_id_dict.items():
                         writer.writerow([key, value])
-                # improve performance
-                if len(self.weibo) > 3000:
-                    self.weibo = []
-                    self.weibo_id_list = []
+                with open(user_id_filter_dict_path, 'w', newline="", encoding="utf8") as f:
+                    writer = csv.writer(f)
+                    for key, value in user_id_filter_dict.items():
+                        writer.writerow([key, value])
 
     def get_pages(self):
         """获取全部微博"""
         self.get_user_info()
         page_count = self.get_page_count()
         wrote_count = 0
-        self.print_user_info()
+        # self.print_user_info()
         page1 = 0
         random_pages = random.randint(1, 5)
         for page in tqdm(range(1, page_count + 1), desc='Progress'):
@@ -651,22 +653,32 @@ class Weibo(object):
         self.user_id = user_id
         self.weibo_id_list = []
 
+    def abandon_id(self, user_id):
+        if user_id in user_id_dict:
+            user_id_filter_dict[user_id] = user_id_dict[user_id]
+            del user_id_dict[user_id]
+
     def start(self):
         """运行爬虫"""
-        sensetive_words = ["警", "政务", "平安", "官微", "身边事", "伊斯兰"]
+        prev_user_id = 0
+        sensetive_words = ["警", "政务", "平安", "官微", "身边事", "伊斯兰","新闻","律师","团委"]
         try:
             for i in range(0, len(self.user_id_list)):
-                user_id = self.user_id_list[i]
+                # for i in range(len(self.user_id_list) - 1, 0, -1):
+                if prev_user_id:
+                    self.abandon_id(prev_user_id)
+                prev_user_id = user_id = self.user_id_list[i]
                 if self.except_count > 3:
                     sleep(1200)
                     self.except_count = 0
-                # user_id = self.user_id_list[random.randint(0, len(self.user_id_list) - 1)]
+                # prev_user_id = user_id = self.user_id_list[random.randint(0, len(self.user_id_list) - 1)]
                 self.initialize_info(user_id)
                 self.get_user_info()
-                # self.print_user_info()
-                if self.user.get("verified_type"):
+                if self.user.get("verified_type") in [1, 2, 3]:
                     continue
                 nick_name = self.user.get("screen_name")
+                if not nick_name:
+                    continue
                 sensitive_user = 0
                 for sensetive_word in sensetive_words:
                     if sensetive_word in nick_name:
@@ -677,6 +689,7 @@ class Weibo(object):
                 fp = self.get_filepath("csv")
                 if os.path.exists(fp):
                     continue
+                self.print_user_info()
                 self.get_pages()
                 print(u'信息抓取完毕')
                 print('*' * 100)
@@ -719,4 +732,8 @@ if __name__ == '__main__':
         with open(user_id_dict_path, encoding="utf8") as csv_file:
             reader = csv.reader(csv_file)
             user_id_dict = dict(reader)
+    if os.path.exists(user_id_filter_dict_path):
+        with open(user_id_filter_dict_path, encoding="utf8") as csv_file:
+            reader = csv.reader(csv_file)
+            user_id_filter_dict = dict(reader)
     main()
