@@ -109,7 +109,11 @@ class Weibo(object):
         """获取网页中json数据"""
         url = 'https://m.weibo.cn/api/container/getIndex?'
         r = requests.get(url, params=params)
-        return r.json()
+        try:
+            return r.json()
+        except json.decoder.JSONDecodeError:
+            sleep(60)
+            self.except_count += 1
 
     def get_weibo_json(self, page):
         """获取网页中微博json数据"""
@@ -501,8 +505,6 @@ class Weibo(object):
             print("Error: ", e)
             traceback.print_exc()
             self.except_count += 1
-            sleep(600)
-            return True
 
     def get_page_count(self):
         """获取微博页数"""
@@ -608,26 +610,25 @@ class Weibo(object):
         wrote_count = 0
         # self.print_user_info()
         page1 = 0
-        random_pages = random.randint(1, 5)
+        except_count=self.except_count
+        random_pages = random.randint(1, 10)
         for page in tqdm(range(1, page_count + 1), desc='Progress'):
             print(u'第%d页' % page)
             is_end = self.get_one_page(page)
-            if is_end:
+            if is_end or self.except_count-except_count>3:
                 break
-
             if page % 20 == 0:  # 每爬20页写入一次文件
                 self.write_data(wrote_count)
                 wrote_count = self.got_count
                 if page > 200 and self.got_count / (page * 10) < 0.05:
                     break
-
             # 通过加入随机等待避免被限制。爬虫速度过快容易被系统限制(一段时间后限
             # 制会自动解除)，加入随机等待模拟人的操作，可降低被系统限制的风险。默
             # 认是每爬取1到5页随机等待6到10秒，如果仍然被限，可适当增加sleep时间
             if page - page1 == random_pages and page < page_count:
-                sleep(random.randint(11, 22))
+                sleep(random.randint(5, 22))
                 page1 = page
-                random_pages = random.randint(1, 5)
+                random_pages = random.randint(1, 10)
 
         self.write_data(wrote_count)  # 将剩余不足20页的微博写入文件
         print(u'微博爬取完成，共爬取%d条微博' % self.got_count)
@@ -661,7 +662,7 @@ class Weibo(object):
     def start(self):
         """运行爬虫"""
         prev_user_id = 0
-        sensetive_words = ["警", "政务", "平安", "官微", "身边事", "伊斯兰","新闻","律师","团委"]
+        sensetive_words = ["警", "政务", "平安", "官微", "身边事", "伊斯兰", "新闻", "律师", "团委"]
         try:
             for i in range(0, len(self.user_id_list)):
                 # for i in range(len(self.user_id_list) - 1, 0, -1):
@@ -671,7 +672,7 @@ class Weibo(object):
                 if self.except_count > 3:
                     sleep(1200)
                     self.except_count = 0
-                # prev_user_id = user_id = self.user_id_list[random.randint(0, len(self.user_id_list) - 1)]
+                prev_user_id = user_id = self.user_id_list[random.randint(0, len(self.user_id_list) - 1)]
                 self.initialize_info(user_id)
                 self.get_user_info()
                 if self.user.get("verified_type") in [1, 2, 3]:

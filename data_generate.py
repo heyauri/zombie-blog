@@ -101,9 +101,13 @@ def word_range_generate(size=10000, force=False):
         dict_words=dict(words.most_common(size))
         for key, value in dict_words.items():
             writer.writerow([key, value])
+        return dict_words
+
+def numberize():
+    pass
 
 
 
 if __name__ == '__main__':
-    # weibo_export(force=True)
-    word_range_generate()
+    weibo_export(force=True)
+    word_range_generate(size=60000)
